@@ -4,7 +4,7 @@ const contactsRouter = express.Router();
 import contactValidation from "../../middlewares/validation/contact-validation.js";
 // ? // Імпорт контроллеру взаємодії з контактами;
 import contactsController from "../../controllers/contacts-controller.js";
-
+// ? // Імпорт функції перевірки чи валідний айді в запиті ;
 import { isValidId } from "../../middlewares/validation/id-validation/index.js";
 // ? 1) Роутер запиту на список всіх контактів ;
 contactsRouter.get("/", contactsController.getAllContacts);
