@@ -1,11 +1,13 @@
 import express from "express";
-const contactsRouter = express.Router();
 // ? // імпорт мідлвари валідації переданого тіла контакту ;
 import contactValidation from "../../middlewares/validation/contact-validation.js";
 // ? // Імпорт контроллеру взаємодії з контактами;
 import contactsController from "../../controllers/contacts-controller.js";
 // ? // Імпорт функції перевірки чи валідний айді в запиті ;
 import { isValidId } from "../../middlewares/validation/id-validation/index.js";
+import authenticate from "../../middlewares/authentication/authenticate.js";
+const contactsRouter = express.Router();
+contactsRouter.use(authenticate);
 // ? 1) Роутер запиту на список всіх контактів ;
 contactsRouter.get("/", contactsController.getAllContacts);
 // ? 2) Роутер запиту на один контакт за айді ;
