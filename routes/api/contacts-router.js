@@ -1,42 +1,50 @@
 import express from "express";
-// ? // імпорт мідлвари валідації переданого тіла контакту ;
-import contactValidation from "../../middlewares/validation/contact-validation.js";
-// ? // Імпорт контроллеру взаємодії з контактами;
+
 import contactsController from "../../controllers/contacts-controller.js";
-// ? // Імпорт функції перевірки чи валідний айді в запиті ;
-import { isValidId } from "../../middlewares/validation/id-validation/index.js";
-import authenticate from "../../middlewares/authentication/authenticate.js";
+
+import validateBody from "../../decorators/validateBody.js";
+import {
+  contactsAddSchema,
+  contactsUpdateFavoriteSchema,
+} from "../../models/Contact.js";
+import { authenticate, isValidId } from "../../middlewares/index.js";
+
 const contactsRouter = express.Router();
+
 contactsRouter.use(authenticate);
-// ? 1) Роутер запиту на список всіх контактів ;
+
 contactsRouter.get("/", contactsController.getAllContacts);
-// ? 2) Роутер запиту на один контакт за айді ;
-contactsRouter.get("/:contactId", isValidId, contactsController.getContactById);
-// ? 3) Роутер додавання нового контакту з тілом запиту;
-contactsRouter.post(
-  "/",
-  contactValidation.addContactValidate,
-  contactsController.addContact
-);
-// ? 4) Роутер оновлення існуючого контакту ;
-contactsRouter.put(
+
+contactsRouter.get(
   "/:contactId",
   isValidId,
-  contactValidation.updateContactById,
-  contactsController.updateContactById
+  contactsController.getByIdContacts
 );
-// ? 5) Роутер зміни статусу favorite контакту за айді ;
-contactsRouter.patch(
-  "/:contactId/favorite",
-  isValidId,
-  contactValidation.updateFavoriteFieldById,
-  contactsController.updateContactById
+
+contactsRouter.post(
+  "/",
+  validateBody(contactsAddSchema),
+  contactsController.addContacts
 );
-// ? 6) Роутер запиту видалення існуючого контакту за айді ;
+
 contactsRouter.delete(
   "/:contactId",
   isValidId,
-  contactsController.removeContactById
+  contactsController.deleteByIdContacts
+);
+
+contactsRouter.put(
+  "/:contactId",
+  isValidId,
+  validateBody(contactsAddSchema),
+  contactsController.updateByIdContacts
+);
+
+contactsRouter.patch(
+  "/:contactId/favorite",
+  isValidId,
+  validateBody(contactsUpdateFavoriteSchema),
+  contactsController.updateByIdContacts
 );
 
 export default contactsRouter;

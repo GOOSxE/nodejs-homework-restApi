@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
-import { handleSaveError, runValidateAtUpdate } from "./hooks.js";
 import Joi from "joi";
+import { handleSaveError, runValidateAtUpdate } from "./hooks.js";
 
 const contactSchema = new Schema(
   {
@@ -24,7 +24,7 @@ const contactSchema = new Schema(
       required: true,
     },
   },
-  { versionKey: false, timestamps: true }
+  { versionKey: false }
 );
 
 contactSchema.post("save", handleSaveError);
@@ -32,28 +32,22 @@ contactSchema.post("save", handleSaveError);
 contactSchema.pre("findOneAndUpdate", runValidateAtUpdate);
 contactSchema.post("findOneAndUpdate", handleSaveError);
 
-export const addContactSchema = Joi.object({
-  name: Joi.string().required().messages({
-    "any.required": `"title" must be exsit`,
+export const contactsAddSchema = Joi.object({
+  name: Joi.string().messages({
+    "any.required": `missing required name field`,
   }),
-  email: Joi.string().required().messages({
-    "any.required": `"email" must be exsit`,
+  email: Joi.string().messages({
+    "any.required": `missing required email field`,
   }),
-  phone: Joi.string().required().messages({
-    "any.required": `"phone" must be exsit`,
+  phone: Joi.string().messages({
+    "any.required": `missing required phone field`,
   }),
-  favorite: Joi.boolean().default(false),
-})
-  .required()
-  .messages({ message: "missing fields" });
-export const updateContactSchema = Joi.object()
-  .required()
-  .messages({ message: "missing fields" });
-export const updateFavoriteFieldSchema = Joi.object({
+  favorite: Joi.boolean(),
+});
+
+export const contactsUpdateFavoriteSchema = Joi.object({
   favorite: Joi.boolean().required(),
-})
-  .required()
-  .messages({ message: "missing field favorite" });
+});
 
 const Contact = model("contact", contactSchema);
 

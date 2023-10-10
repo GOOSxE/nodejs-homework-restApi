@@ -1,79 +1,104 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import "dotenv/config.js";
-
-const { JWT_SECRET } = process.env;
-
+import gravatar from "gravatar";
+import path from "path";
+import fs from "fs/promises";
+import Jimp from "jimp";
 import User from "../models/User.js";
-// ? // Імпорт хелпера для створення помилки ;
 import { HttpError } from "../helpers/index.js";
-// ? // Імпорт врапера обгортки функцій в try/catch ;
 import { ctrlWrapper } from "../decorators/index.js";
 
-const signUp = async (req, res) => {
+const { JWT_SECRET } = process.env;
+const avatarsPath = path.resolve("public", "avatars");
+
+const signup = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (user) {
-    throw HttpError(409, "Email already in use");
+    throw HttpError(409, "Email in use");
   }
+
   const hashPassword = await bcrypt.hash(password, 10);
-  const newUser = await User.create({ ...req.body, password: hashPassword });
+
+  const avatarURL = gravatar.url(email);
+
+  const newUser = await User.create({
+    ...req.body,
+    password: hashPassword,
+    avatarURL,
+  });
+
   res.status(201).json({
-    username: newUser.username,
     email: newUser.email,
   });
 };
-const signIn = async (req, res) => {
+
+const signin = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
-    throw HttpError(401, "Email or password invalid");
+    throw HttpError(401, "Email or password is wrong");
   }
+
   const passwordCompare = await bcrypt.compare(password, user.password);
   if (!passwordCompare) {
-    throw HttpError(401, "Email or password invalid");
+    throw HttpError(401, "Email or password is wrong");
   }
-  const { _id: id } = user;
-  const payload = {
-    id: user._id,
-  };
-  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
-  const refreschToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 
-  await User.findByIdAndUpdate(id, { accessToken, refreschToken });
-  res.json({ accessToken, refreschToken });
-};
-const getCurrent = (req, res) => {
-  const { name, email } = req.user;
-  res.json({ name, email });
-};
-const signOut = async (req, res) => {
-  const { _id } = req.user;
-  await User.findByIdAndUpdate(_id, { accessToken: "", refreschToken: "" });
+  const { _id: id } = user;
+
+  const payload = {
+    id,
+  };
+
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "23h" });
+  await User.findByIdAndUpdate(id, { token });
+
   res.json({
-    message: "Signout success",
+    token,
   });
 };
-const refresch = async (req, res) => {
-  const { refreschToken } = req.body;
-  try {
-    const { id } = jwt.verify(refreschToken, JWT_SECRET);
-    const user = await User.findOne({ refreschToken });
-    if (!user) {
-      throw HttpError(403);
-    }
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
-    const refreschToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
-    await User.findByIdAndUpdate(id, { accessToken, refreschToken });
-    res.json({ accessToken, refreschToken });
-  } catch {
-    throw HttpError(403);
-  }
+
+const getCurrent = async (req, res) => {
+  const { email } = req.user;
+  res.json({
+    email,
+  });
 };
+
+const logout = async (req, res) => {
+  const { _id } = req.user;
+  await User.findByIdAndUpdate(_id, { token: "" });
+
+  res.json({
+    message: "No Content",
+  });
+};
+
+const updateAvatar = async (req, res) => {
+  const { _id } = req.user;
+  const { path: tempUpload, originalname } = req.file;
+  const img = await Jimp.read(tempUpload);
+  await img
+    .autocrop()
+    .cover(250, 250, Jimp.HORIZONTAL_ALIGN_CENTER | Jimp.VERTICAL_ALIGN_MIDDLE)
+    .writeAsync(tempUpload);
+
+  const filename = `${_id}_${originalname}`;
+  const resultUpload = path.join(avatarsPath, filename);
+  await fs.rename(tempUpload, resultUpload);
+  const avatarURL = path.join("avatars", filename);
+  await User.findByIdAndUpdate(_id, { avatarURL });
+
+  res.json({
+    avatarURL,
+  });
+};
+
 export default {
-  signUp: ctrlWrapper(signUp),
-  signIn: ctrlWrapper(signIn),
+  signup: ctrlWrapper(signup),
+  signin: ctrlWrapper(signin),
   getCurrent: ctrlWrapper(getCurrent),
-  signOut: ctrlWrapper(signOut),
-  refresch: ctrlWrapper(refresch),
+  logout: ctrlWrapper(logout),
+  updateAvatar: ctrlWrapper(updateAvatar),
 };

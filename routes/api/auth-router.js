@@ -1,19 +1,28 @@
 import express from "express";
 
+import authController from "../../controllers/auth-controller.js";
+import validateBody from "../../decorators/validateBody.js";
+import { userSignupOrSigninSchema } from "../../models/User.js";
+import { authenticate, upload } from "../../middlewares/index.js";
+
 const authRouter = express.Router();
 
-import authController from "../../controllers/auth-controller.js";
+authRouter.post(
+  "/register",
+  validateBody(userSignupOrSigninSchema),
+  authController.signup
+);
 
-import userAuthValidate from "../../middlewares/validation/user-validation.js";
+authRouter.post(
+  "/login",
+  validateBody(userSignupOrSigninSchema),
+  authController.signin
+);
 
-import {authenticate} from "../../middlewares/authentication/index.js"
-
-authRouter.post("/register", userAuthValidate.userSignUpValidate, authController.signUp);
-authRouter.post("/login", userAuthValidate.userSignInValidate, authController.signIn);
-authRouter.post("/refresch", userAuthValidate.userRefreschValidate, authController.refresch)
 authRouter.get("/current", authenticate, authController.getCurrent);
-authRouter.post("/logout", authController.signOut);
 
+authRouter.post("/logout", authenticate, authController.logout);
 
+authRouter.patch("/avatars", authenticate, upload.single("avatar"), authController.updateAvatar);
 
 export default authRouter;

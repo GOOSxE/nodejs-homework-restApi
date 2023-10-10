@@ -1,63 +1,69 @@
-
 import Contact from "../models/Contact.js";
-// ? // Імпорт хелпера для створення помилки ;
 import { HttpError } from "../helpers/index.js";
-// ? // Імпорт врапера обгортки функцій в try/catch ;
 import { ctrlWrapper } from "../decorators/index.js";
-// ? // Контроллер обробки запиту на список всіх контактів ;
+
 const getAllContacts = async (req, res) => {
   const { _id: owner } = req.user;
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 20 } = req.query;
   const skip = (page - 1) * limit;
-  const result = await Contact.find({ owner }, "-createdAt -updatedAt", {
-    skip,
-    limit,
-  }).populate("owner", "name email");
+  const result = await Contact.find({ owner }, "", { skip, limit });
   res.json(result);
 };
-// ? // Контроллер запиту на один контакт за айді ;
-const getContactById = async (req, res) => {
+
+const getByIdContacts = async (req, res) => {
+  const { _id: owner } = req.user;
   const { contactId } = req.params;
-  const result = await Contact.findById(contactId);
+  const result = await Contact.findOne({ _id: contactId, owner });
   if (!result) {
-    throw HttpError(404, `Contact with id: ${contactId} not found`);
-  } else {
-    res.json(result);
+    throw HttpError(404, `Not found`);
   }
+  res.json(result);
 };
-// ? // Контроллер запиту додавання нового контакту з тілом запиту;
-const addContact = async (req, res) => {
+
+const addContacts = async (req, res) => {
   const { _id: owner } = req.user;
   const result = await Contact.create({ ...req.body, owner });
   res.status(201).json(result);
 };
-// ? // Контроллер запиту оновлення існуючого контакту за айді;
-const updateContactById = async (req, res) => {
+
+const updateByIdContacts = async (req, res) => {
+  if (Object.keys(req.body).length === 0) {
+    throw HttpError(400, "missing fields");
+  }
+  const { _id: owner } = req.user;
   const { contactId } = req.params;
-  const result = await Contact.findByIdAndUpdate(contactId, req.body, {
-    new: true,
+  const result = await Contact.findOneAndUpdate(
+    { _id: contactId, owner },
+    req.body,
+    {
+      new: true,
+    }
+  );
+  if (!result) {
+    throw HttpError(404, `Not found`);
+  }
+  res.json(result);
+};
+
+const deleteByIdContacts = async (req, res) => {
+  const { contactId } = req.params;
+  const { _id: owner } = req.user;
+  const result = await Contact.findOneAndRemove({
+    _id: contactId,
+    owner,
   });
   if (!result) {
-    throw HttpError(404, `Contact with id: ${contactId} not found`);
-  } else {
-    res.json(result);
+    throw HttpError(404, `Not found`);
   }
-};
-// ? // Контроллер запиту видалення контакту за айді ;
-const removeContactById = async (req, res) => {
-  const { contactId } = req.params;
-  const result = await Contact.findByIdAndDelete(contactId);
-  if (!result) {
-    throw HttpError(404, `Contact with id: ${contactId} not found`);
-  } else {
-    res.status(200).json({ message: "Contact deleted successfully" });
-  }
+  res.json({
+    message: "Contact deleted",
+  });
 };
 
 export default {
   getAllContacts: ctrlWrapper(getAllContacts),
-  addContact: ctrlWrapper(addContact),
-  getContactById: ctrlWrapper(getContactById),
-  updateContactById: ctrlWrapper(updateContactById),
-  removeContactById: ctrlWrapper(removeContactById),
+  getByIdContacts: ctrlWrapper(getByIdContacts),
+  addContacts: ctrlWrapper(addContacts),
+  updateByIdContacts: ctrlWrapper(updateByIdContacts),
+  deleteByIdContacts: ctrlWrapper(deleteByIdContacts),
 };
